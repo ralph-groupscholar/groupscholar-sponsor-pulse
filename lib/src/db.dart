@@ -10,7 +10,9 @@ class SponsorPulseDb {
 
   static Future<SponsorPulseDb> connect() async {
     final config = DbConfig.fromEnv();
-    final connection = await Connection.openFromUrl(config.toConnectionString());
+    final connection = await Connection.openFromUrl(
+      config.toConnectionString(),
+    );
     return SponsorPulseDb(connection);
   }
 
@@ -168,10 +170,7 @@ class SponsorPulseDb {
           AND i.contact_date <= @end
         ORDER BY i.contact_date DESC, i.created_at DESC
       '''),
-      parameters: {
-        'start': start,
-        'end': end,
-      },
+      parameters: {'start': start, 'end': end},
     );
 
     return result
@@ -184,6 +183,50 @@ class SponsorPulseDb {
             summary: row[4] as String,
             nextStep: row[5] as String? ?? '',
             sentiment: row[6] as int,
+          ),
+        )
+        .toList();
+  }
+
+  Future<List<SponsorHealthMetric>> sponsorHealthMetrics({
+    int recencyDays = 30,
+    int sentimentDays = 90,
+  }) async {
+    final result = await _connection.execute(
+      Sql.named('''
+        SELECT s.id,
+               s.name,
+               s.segment,
+               s.owner,
+               MAX(i.contact_date) AS last_contact_date,
+               COUNT(i.id) FILTER (
+                 WHERE i.contact_date >= CURRENT_DATE - (@recencyDays::int)
+               ) AS recent_interactions,
+               AVG(i.sentiment) FILTER (
+                 WHERE i.contact_date >= CURRENT_DATE - (@sentimentDays::int)
+               ) AS avg_sentiment
+        FROM groupscholar_sponsor_pulse.sponsors s
+        LEFT JOIN groupscholar_sponsor_pulse.interactions i
+          ON i.sponsor_id = s.id
+        GROUP BY s.id, s.name, s.segment, s.owner
+        ORDER BY s.name ASC
+      '''),
+      parameters: {
+        'recencyDays': recencyDays,
+        'sentimentDays': sentimentDays,
+      },
+    );
+
+    return result
+        .map(
+          (row) => SponsorHealthMetric(
+            id: row[0] as int,
+            name: row[1] as String,
+            segment: row[2] as String,
+            owner: row[3] as String,
+            lastContactDate: row[4] as DateTime?,
+            recentInteractions: (row[5] as int?) ?? 0,
+            avgSentiment: (row[6] as num?)?.toDouble(),
           ),
         )
         .toList();

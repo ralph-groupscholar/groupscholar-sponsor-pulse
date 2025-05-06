@@ -11,7 +11,8 @@ void main(List<String> arguments) async {
     ..addCommand('log-interaction', _logInteractionParser())
     ..addCommand('list-sponsors', _listSponsorsParser())
     ..addCommand('recent-interactions', _recentInteractionsParser())
-    ..addCommand('weekly-summary', _weeklySummaryParser());
+    ..addCommand('weekly-summary', _weeklySummaryParser())
+    ..addCommand('sponsor-health', _sponsorHealthParser());
 
   ArgResults results;
   try {
@@ -47,6 +48,9 @@ void main(List<String> arguments) async {
       case 'weekly-summary':
         await _handleWeeklySummary(command);
         break;
+      case 'sponsor-health':
+        await _handleSponsorHealth(command);
+        break;
       default:
         _printUsage(parser);
     }
@@ -66,12 +70,37 @@ ArgParser _addSponsorParser() {
 
 ArgParser _logInteractionParser() {
   return ArgParser()
-    ..addOption('sponsor', abbr: 's', help: 'Sponsor name or ID', mandatory: true)
-    ..addOption('date', abbr: 'd', help: 'Contact date (YYYY-MM-DD)', mandatory: true)
-    ..addOption('channel', abbr: 'c', help: 'Channel (email, call, etc.)', mandatory: true)
-    ..addOption('summary', abbr: 'm', help: 'Summary of interaction', mandatory: true)
+    ..addOption(
+      'sponsor',
+      abbr: 's',
+      help: 'Sponsor name or ID',
+      mandatory: true,
+    )
+    ..addOption(
+      'date',
+      abbr: 'd',
+      help: 'Contact date (YYYY-MM-DD)',
+      mandatory: true,
+    )
+    ..addOption(
+      'channel',
+      abbr: 'c',
+      help: 'Channel (email, call, etc.)',
+      mandatory: true,
+    )
+    ..addOption(
+      'summary',
+      abbr: 'm',
+      help: 'Summary of interaction',
+      mandatory: true,
+    )
     ..addOption('next-step', abbr: 'n', help: 'Next step', defaultsTo: '')
-    ..addOption('sentiment', abbr: 't', help: 'Sentiment (-2 to 2)', defaultsTo: '0');
+    ..addOption(
+      'sentiment',
+      abbr: 't',
+      help: 'Sentiment (-2 to 2)',
+      defaultsTo: '0',
+    );
 }
 
 ArgParser _listSponsorsParser() {
@@ -83,8 +112,40 @@ ArgParser _recentInteractionsParser() {
 }
 
 ArgParser _weeklySummaryParser() {
+  return ArgParser()..addOption(
+    'weeks',
+    abbr: 'w',
+    defaultsTo: '1',
+    help: 'Number of weeks back',
+  );
+}
+
+ArgParser _sponsorHealthParser() {
   return ArgParser()
-    ..addOption('weeks', abbr: 'w', defaultsTo: '1', help: 'Number of weeks back');
+    ..addOption(
+      'recency-days',
+      abbr: 'r',
+      defaultsTo: '30',
+      help: 'Days to count recent interactions',
+    )
+    ..addOption(
+      'sentiment-days',
+      abbr: 's',
+      defaultsTo: '90',
+      help: 'Days to average sentiment over',
+    )
+    ..addOption(
+      'stale-days',
+      abbr: 't',
+      defaultsTo: '45',
+      help: 'Days without touchpoint to flag stale',
+    )
+    ..addOption(
+      'warm-days',
+      abbr: 'w',
+      defaultsTo: '30',
+      help: 'Days without touchpoint to flag slipping',
+    );
 }
 
 Future<void> _handleAddSponsor(ArgResults command) async {
@@ -179,9 +240,36 @@ Future<void> _handleWeeklySummary(ArgResults command) async {
   }
 }
 
+Future<void> _handleSponsorHealth(ArgResults command) async {
+  final recencyDays = int.tryParse(command['recency-days'] as String) ?? 30;
+  final sentimentDays = int.tryParse(command['sentiment-days'] as String) ?? 90;
+  final staleDays = int.tryParse(command['stale-days'] as String) ?? 45;
+  final warmDays = int.tryParse(command['warm-days'] as String) ?? 30;
+  final now = DateTime.now();
+
+  final db = await SponsorPulseDb.connect();
+  try {
+    final metrics = await db.sponsorHealthMetrics(
+      recencyDays: recencyDays,
+      sentimentDays: sentimentDays,
+    );
+    final statuses = assessSponsorHealth(
+      metrics,
+      now: now,
+      staleDays: staleDays,
+      warmDays: warmDays,
+    );
+    stdout.writeln(renderHealthReport(statuses, asOf: now));
+  } finally {
+    await db.close();
+  }
+}
+
 void _printUsage(ArgParser parser) {
   stdout.writeln('Sponsor Pulse CLI');
-  stdout.writeln('Usage: dart run bin/groupscholar_sponsor_pulse.dart <command> [options]');
+  stdout.writeln(
+    'Usage: dart run bin/groupscholar_sponsor_pulse.dart <command> [options]',
+  );
   stdout.writeln('');
   stdout.writeln('Commands:');
   stdout.writeln('  add-sponsor        Add a new sponsor');
@@ -189,6 +277,7 @@ void _printUsage(ArgParser parser) {
   stdout.writeln('  list-sponsors      List sponsors');
   stdout.writeln('  recent-interactions  List recent interactions');
   stdout.writeln('  weekly-summary     Generate a weekly summary');
+  stdout.writeln('  sponsor-health     Show sponsor health snapshot');
   stdout.writeln('');
   stdout.writeln(parser.usage);
 }

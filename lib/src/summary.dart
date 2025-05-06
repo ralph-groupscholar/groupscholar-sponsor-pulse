@@ -23,10 +23,16 @@ SummaryResult buildSummary(List<Interaction> interactions) {
   final nextSteps = <String>[];
 
   for (final interaction in interactions) {
-    bySponsor.update(interaction.sponsorName, (value) => value + 1,
-        ifAbsent: () => 1);
-    byChannel.update(interaction.channel, (value) => value + 1,
-        ifAbsent: () => 1);
+    bySponsor.update(
+      interaction.sponsorName,
+      (value) => value + 1,
+      ifAbsent: () => 1,
+    );
+    byChannel.update(
+      interaction.channel,
+      (value) => value + 1,
+      ifAbsent: () => 1,
+    );
     sentimentTotal += interaction.sentiment;
     if (interaction.nextStep.trim().isNotEmpty) {
       nextSteps.add(interaction.nextStep.trim());
@@ -46,12 +52,18 @@ SummaryResult buildSummary(List<Interaction> interactions) {
   );
 }
 
-String renderSummary(SummaryResult result, {required DateTime start, required DateTime end}) {
+String renderSummary(
+  SummaryResult result, {
+  required DateTime start,
+  required DateTime end,
+}) {
   final buffer = StringBuffer();
   buffer.writeln('Sponsor Pulse Summary');
   buffer.writeln('Window: ${_formatDate(start)} to ${_formatDate(end)}');
   buffer.writeln('Total interactions: ${result.totalInteractions}');
-  buffer.writeln('Average sentiment: ${result.avgSentiment.toStringAsFixed(2)}');
+  buffer.writeln(
+    'Average sentiment: ${result.avgSentiment.toStringAsFixed(2)}',
+  );
   buffer.writeln('');
   buffer.writeln('Interactions by sponsor:');
   if (result.bySponsor.isEmpty) {

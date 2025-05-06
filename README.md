@@ -46,6 +46,7 @@ dart run bin/groupscholar_sponsor_pulse.dart list-sponsors
 - `list-sponsors [--limit]`
 - `recent-interactions [--days]`
 - `weekly-summary [--weeks]`
+- `sponsor-health [--recency-days] [--sentiment-days] [--stale-days] [--warm-days]`
 
 ## Database
 

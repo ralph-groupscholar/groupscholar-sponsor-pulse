@@ -28,7 +28,10 @@ class DbConfig {
 
     return DbConfig(
       host: requireEnv('GS_SPONSOR_PULSE_DB_HOST'),
-      port: int.tryParse(Platform.environment['GS_SPONSOR_PULSE_DB_PORT'] ?? '') ??
+      port:
+          int.tryParse(
+            Platform.environment['GS_SPONSOR_PULSE_DB_PORT'] ?? '',
+          ) ??
           5432,
       database: Platform.environment['GS_SPONSOR_PULSE_DB_NAME'] ?? 'postgres',
       user: requireEnv('GS_SPONSOR_PULSE_DB_USER'),

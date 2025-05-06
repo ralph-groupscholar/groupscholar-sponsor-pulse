@@ -33,3 +33,23 @@ class Interaction {
   final String nextStep;
   final int sentiment;
 }
+
+class SponsorHealthMetric {
+  SponsorHealthMetric({
+    required this.id,
+    required this.name,
+    required this.segment,
+    required this.owner,
+    required this.lastContactDate,
+    required this.recentInteractions,
+    required this.avgSentiment,
+  });
+
+  final int id;
+  final String name;
+  final String segment;
+  final String owner;
+  final DateTime? lastContactDate;
+  final int recentInteractions;
+  final double? avgSentiment;
+}
